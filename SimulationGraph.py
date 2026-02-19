@@ -262,4 +262,4 @@ def run_interactive_simulation(cfg):
 
 
 if __name__ == "__main__":
-    run_interactive_simulation(SimulationConfig())
+    run_interactive_simulation(SimulationConfig(chassis_piston_anchor=np.array([ 0.08, -0.48]), piston_mount_on_door=np.array([ 0.13, -0.02])))
