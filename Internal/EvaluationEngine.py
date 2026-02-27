@@ -1,8 +1,7 @@
 import numpy as np
 from typing import List, Dict, Any
-from SimulationEngine import SimulationResult
-from Config import SimulationConfig
-from Optimizer import PistonSpec
+from Internal.SimulationEngine import SimulationResult
+from Internal.Config import SimulationConfig
 
 
 class EvaluationEngine:
@@ -37,13 +36,12 @@ class EvaluationEngine:
 
     def calculate_metrics(self, result: SimulationResult, cfg: SimulationConfig) -> Dict[str, float]:
         actual_close_force = abs(self._get_user_force_at_handle(result.net_torques[0], cfg.door_length))
-
         positive_torques = [t for t in result.net_torques if t > 0]
         avg_positive_torque = np.mean(positive_torques) if positive_torques else 0.0
         actual_open_force = self._get_user_force_at_handle(avg_positive_torque, cfg.door_length)
 
-        # 3. Maximum Hinge Stress
-        max_hinge_force = max(result.hinge_forces)
+        # Updated to match SimulationResult.hinge_forces
+        max_hinge_force = max(result.hinge_forces) if result.hinge_forces else 0.0
 
         return {
             "actual_close_force": actual_close_force,

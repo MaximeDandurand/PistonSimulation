@@ -1,8 +1,8 @@
 import numpy as np
 from typing import List, Dict, Any
 from matplotlib.path import Path
-from SimulationEngine import HatchbackPhysicsEngine, SimulationResult
-from Config import SimulationConfig
+from Internal.SimulationEngine import HatchbackPhysicsEngine, SimulationResult
+from Internal.Config import SimulationConfig
 
 
 class PistonSpec:

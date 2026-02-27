@@ -13,9 +13,9 @@ class SimulationConfig:
                  door_length=1.0,
                  door_mass_kg=11.0,
                  strut_max_length=0.6,
-                 strut_stroke=0.4,
-                 extension_force_n=500.0,   # Force at Max Length
-                 compression_force_n=650.0,  # Force at Min Length
+                 strut_stroke=0.25,
+                 extension_force_n=800.0,   # Force at Max Length
+                 compression_force_n=1000.0,  # Force at Min Length
                  door_close_angle_deg=5.0    # Starting position when closed
                  ):
         self.chassis_piston_anchor = chassis_piston_anchor

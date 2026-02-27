@@ -1,13 +1,11 @@
 import numpy as np
-from typing import List, Dict, Any
-from Config import SimulationConfig
-from Optimizer import PistonSpec, MountingArea, run_grid_search
-from EvaluationEngine import EvaluationEngine
+from Internal.Config import SimulationConfig
+from Internal.Optimizer import PistonSpec, MountingArea, run_grid_search
+from Internal.EvaluationEngine import EvaluationEngine
 
 
-def run_simulation_workflow() -> None:
+def run_grid_simulation_workflow() -> None:
     base_cfg = SimulationConfig()
-
 
     chassis_zone = MountingArea([
         (0.0, -0.3),
@@ -22,19 +20,19 @@ def run_simulation_workflow() -> None:
         (0.2, -0.1)
     ])
 
-    #Piston that we know is going to work
+    # Piston that we know is going to work
     piston_catalog = [
-        PistonSpec(
-            name="Reference-Piston",
-            max_length=base_cfg.strut_max_length,
-            stroke=base_cfg.strut_max_length - base_cfg.strut_min_length,
-            f_ext=base_cfg.f_ext,
-            f_comp=base_cfg.f_comp
-        ),
+        #PistonSpec(
+            #name="Reference-Piston",
+            #max_length=base_cfg.strut_max_length,
+           # stroke=base_cfg.strut_max_length - base_cfg.strut_min_length,
+          #  f_ext=base_cfg.f_ext,
+         #   f_comp=base_cfg.f_comp
+        #),
         PistonSpec("HeavyDuty-800N", max_length=0.6, stroke=0.25, f_ext=800, f_comp=1000)
     ]
 
-    #Run grid search
+    # Run grid search
     print(f"Searching for valid mounting configurations...")
     valid_solutions = run_grid_search(
         base_cfg=base_cfg,
@@ -49,11 +47,11 @@ def run_simulation_workflow() -> None:
         print("No valid configurations found.")
         return
 
-    #Evaluate
-    evaluator = EvaluationEngine(target_close_force_n=20.0, target_open_force_n=10.0) #Value to determine 10N aprox. 1kg to lift
+    # Evaluate
+    evaluator = EvaluationEngine(target_close_force_n=20.0, target_open_force_n=10.0)
     ranked_results = evaluator.evaluate_all(valid_solutions, base_cfg)
 
-    # 6. Output the Results
+    # Output the Results
     print(f"\nFound {len(ranked_results)} valid solutions.")
 
     # Check if our Reference setup made it into the valid list
@@ -67,7 +65,6 @@ def run_simulation_workflow() -> None:
             if c_dist < 0.015 and d_dist < 0.015:
                 print(f"\n--- Verified Reference Configuration Found ---")
                 print(f"Score: {sol['score']:.2f}")
-                print(f"Summary: {sol['summary']}")
                 found_ref = True
                 break
 
@@ -80,8 +77,7 @@ def run_simulation_workflow() -> None:
     print(f"Chassis Mount: {best['chassis_mount']}")
     print(f"Door Mount:    {best['door_mount']}")
     print(f"Score: {best['score']:.2f}")
-    print(f"Detail: {best['summary']}")
 
 
 if __name__ == "__main__":
-    run_simulation_workflow()
+     run_grid_simulation_workflow()
