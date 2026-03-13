@@ -2,29 +2,10 @@ import numpy as np
 from typing import List, Dict, Any, Tuple
 from matplotlib.path import Path
 from Internal.SimulationEngine import HatchbackPhysicsEngine, SimulationResult
-from Internal.Config import SimulationConfig
+from Internal.Config import SimulationConfig, MountingArea, PistonSpec
 from Internal.EvaluationEngine import EvaluationEngine
 
 
-class PistonSpec:
-    def __init__(self, name: str, max_length: float, stroke: float, f_ext: float, f_comp: float):
-        self.name = name
-        self.max_length = max_length
-        self.stroke = stroke
-        self.f_ext = f_ext
-        self.f_comp = f_comp
-
-
-class MountingArea:
-    def __init__(self, vertices: List[Tuple[float, float]]):
-        self.path = Path(vertices)
-        v_np = np.array(vertices)
-        self.x_min, self.y_min = v_np.min(axis=0)
-        self.x_max, self.y_max = v_np.max(axis=0)
-        self.vertices = v_np
-
-    def contains(self, point: np.ndarray) -> bool:
-        return self.path.contains_point(point)
 
 
 class DiscreteGradientOptimizer:
@@ -39,14 +20,14 @@ class DiscreteGradientOptimizer:
         }
     def get_score(self, params: np.ndarray, piston: Any) -> float:
         cx, cy, dx, dy = params
-        self.base_cfg.chassis_piston_anchor = np.array([cx, cy])
-        self.base_cfg.piston_mount_on_door = np.array([dx, dy])
+        self.base_cfg.chassis_piston_anchor_meter = np.array([cx, cy])
+        self.base_cfg.piston_mount_on_door_meter = np.array([dx, dy])
         self.base_cfg.strut_max_length = piston.max_length
         self.base_cfg.strut_min_length = piston.max_length - piston.stroke
         self.base_cfg.f_ext = piston.f_ext
         self.base_cfg.f_comp = piston.f_comp
 
-        result = self.engine.run(self.base_cfg)
+        result = self.engine.run(self.base_cfg, steps=20)
 
         # 1. Start with a neutral penalty
         penalty = 0.0
@@ -94,7 +75,7 @@ class DiscreteGradientOptimizer:
             chassis_poly: MountingArea,
             door_poly: MountingArea,
             start_pos: np.ndarray,
-            resolution: float = 0.001,
+            resolution: float = 0.005,
             max_steps: int = 100
     ) -> Dict[str, Any]:
         current_params = np.round(start_pos / resolution) * resolution

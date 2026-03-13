@@ -24,9 +24,9 @@ def draw_frame(ax, cfg, state_data, alpha=1.0, title=""):
     ax.plot(arc_points[:, 0], arc_points[:, 1], 'k-', alpha=alpha, lw=2.5)
 
     # 2. Strut and Anchor
-    ax.plot([cfg.chassis_piston_anchor[0], p_door_xy[0]],
-            [cfg.chassis_piston_anchor[1], p_door_xy[1]], '--', color=color, alpha=alpha * 0.6)
-    ax.scatter(*cfg.chassis_piston_anchor, color='black', s=60, zorder=10, alpha=alpha)
+    ax.plot([cfg.chassis_piston_anchor_meter[0], p_door_xy[0]],
+            [cfg.chassis_piston_anchor_meter[1], p_door_xy[1]], '--', color=color, alpha=alpha * 0.6)
+    ax.scatter(*cfg.chassis_piston_anchor_meter, color='black', s=60, zorder=10, alpha=alpha)
 
     # 3. Mount and CoM Dots
     ax.scatter(*p_door_xy, color='darkorange', s=35, zorder=5, alpha=alpha)
@@ -55,13 +55,13 @@ def run_interactive_simulation(cfg):
     sw, sh = 0.12, 0.02
     c1, c2, c3, c4 = 0.05, 0.28, 0.52, 0.76
     ax_cx = plt.axes([c1, 0.25, sw, sh]);
-    s_cx = Slider(ax_cx, 'Chassis X', -2.0, 2.0, valinit=cfg.chassis_piston_anchor[0])
+    s_cx = Slider(ax_cx, 'Chassis X', -2.0, 2.0, valinit=cfg.chassis_piston_anchor_meter[0])
     ax_cy = plt.axes([c1, 0.21, sw, sh]);
-    s_cy = Slider(ax_cy, 'Chassis Y', -2.0, 2.0, valinit=cfg.chassis_piston_anchor[1])
+    s_cy = Slider(ax_cy, 'Chassis Y', -2.0, 2.0, valinit=cfg.chassis_piston_anchor_meter[1])
     ax_mx = plt.axes([c2, 0.25, sw, sh]);
-    s_mx = Slider(ax_mx, 'Mount X', 0.0, 2.5, valinit=cfg.piston_mount_on_door[0])
+    s_mx = Slider(ax_mx, 'Mount X', 0.0, 2.5, valinit=cfg.piston_mount_on_door_meter[0])
     ax_my = plt.axes([c2, 0.21, sw, sh]);
-    s_my = Slider(ax_my, 'Mount Y', -1.0, 1.0, valinit=cfg.piston_mount_on_door[1])
+    s_my = Slider(ax_my, 'Mount Y', -1.0, 1.0, valinit=cfg.piston_mount_on_door_meter[1])
     ax_length = plt.axes([c2, 0.17, sw, sh]);
     s_length = Slider(ax_length, 'Door Len', 0.1, 4.0, valinit=cfg.door_length)
     ax_mass = plt.axes([c3, 0.25, sw, sh]);
@@ -80,8 +80,8 @@ def run_interactive_simulation(cfg):
     s_fcomp = Slider(ax_fcomp, 'f_comp (P2)', 0, 4000, valinit=cfg.f_comp)
 
     def update(val):
-        cfg.chassis_piston_anchor = np.array([s_cx.val, s_cy.val])
-        cfg.piston_mount_on_door = np.array([s_mx.val, s_my.val])
+        cfg.chassis_piston_anchor_meter = np.array([s_cx.val, s_cy.val])
+        cfg.piston_mount_on_door_meter = np.array([s_mx.val, s_my.val])
         cfg.center_of_mass_on_door = np.array([s_comx.val, s_comy.val])
         cfg.door_length = s_length.val
         cfg.door_mass_kg = s_mass.val
@@ -91,21 +91,25 @@ def run_interactive_simulation(cfg):
         cfg.f_comp = s_fcomp.val
 
         res = engine.run(cfg, steps=100)
-
         ax1.clear()
         ax2.clear()
         ax3.clear()
         ax2b.clear()
 
         # Render Path Snapshots
-        for idx in [0, 50, 99]:
-            state = {
-                'mount': res.mount_coords[idx], 'com': res.com_coords[idx],
-                'end': res.door_end_coords[idx], 'hinge_v': res.hinge_vectors[idx],
-                'color': res.strut_colors[idx], 'deg': res.angles_deg[idx], 'net': res.net_torques[idx]
-            }
-            alpha = 0.6 if res.is_valid_mask[idx] else 0.15
-            draw_frame(ax1, cfg, state, alpha=alpha, title=f"Motion Path (Max: {res.max_physical_angle:.1f}°)")
+        num_res = len(res.angles_deg)
+        if num_res > 0:
+            snapshot_indices = [0, num_res // 2, num_res - 1]
+            snapshot_indices = sorted(list(set(snapshot_indices)))
+
+            for idx in snapshot_indices:
+                state = {
+                    'mount': res.mount_coords[idx], 'com': res.com_coords[idx],
+                    'end': res.door_end_coords[idx], 'hinge_v': res.hinge_vectors[idx],
+                    'color': res.strut_colors[idx], 'deg': res.angles_deg[idx], 'net': res.net_torques[idx]
+                }
+                alpha = 0.6 if res.is_valid_mask[idx] else 0.15
+                draw_frame(ax1, cfg, state, alpha=alpha, title=f"Motion Path (Max: {res.max_physical_angle:.1f}°)")
 
         # Render Equilibrium
         if res.equilibrium_angle:
@@ -114,14 +118,31 @@ def run_interactive_simulation(cfg):
         else:
             ax3.set_title("No Balance Point")
 
-        # Plots
-        ax2.plot(res.angles_deg, res.net_torques, 'k-')
-        ax2.axhline(0, color='black', lw=1)
-        ax2.fill_between(res.angles_deg, 0, res.net_torques, where=np.array(res.net_torques) > 0, color='green',
-                         alpha=0.3)
-        ax2.fill_between(res.angles_deg, 0, res.net_torques, where=np.array(res.net_torques) < 0, color='red',
-                         alpha=0.3)
+        # --- Plots (ax2) ---
+        # 1. Plot the main torque curve
+        ax2.plot(res.angles_deg, res.net_torques, 'k-', zorder=3)
+        ax2.axhline(0, color='black', lw=1, zorder=2)
+
+        # 2. Fill functional regions (Green for lifting assistance, Red for closing weight)
+        ax2.fill_between(res.angles_deg, 0, res.net_torques, where=np.array(res.net_torques) > 0,
+                         color='green', alpha=0.3)
+        ax2.fill_between(res.angles_deg, 0, res.net_torques, where=np.array(res.net_torques) < 0,
+                         color='red', alpha=0.3)
+
+        # 3. Highlight INVALID regions (Physical constraints violated)
+        # This creates a hatched grey background where the mask is False
+        invalid_mask = ~np.array(res.is_valid_mask)
+        ax2.fill_between(res.angles_deg, -1e6, 1e6, where=invalid_mask,
+                         color='grey', alpha=0.2, hatch='//', label='Invalid Geometry', zorder=1)
+
+        # Secondary Axis for Hinge Forces
         ax2b.plot(res.angles_deg, res.hinge_forces, 'p--', alpha=0.3)
+
+        # Clean up y-limits so the 'invalid' fill doesn't zoom out the graph to 1e6
+        if len(res.net_torques) > 0:
+            y_min, y_max = min(res.net_torques), max(res.net_torques)
+            padding = (y_max - y_min) * 0.1 if y_max != y_min else 1.0
+            ax2.set_ylim(y_min - padding, y_max + padding)
 
         fig.canvas.draw_idle()
 
@@ -134,5 +155,10 @@ def run_interactive_simulation(cfg):
 
 if __name__ == "__main__":
     run_interactive_simulation(
-        SimulationConfig(chassis_piston_anchor=np.array([0.061000, -0.532000]), piston_mount_on_door=np.array([0.083000, -0.019000]), strut_max_length=0.6, strut_stroke=0.25)
+        SimulationConfig(chassis_piston_anchor=np.array([0.047000, -0.541000]),
+                         piston_mount_on_door=np.array([0.134000, -0.011000]),
+                         center_of_mass_on_door=np.array([0.500000, 0.000000]), door_length=1, door_mass_kg=25.0,
+                         strut_max_length=0.66802, strut_stroke=0.278892, extension_force_n=444.822,
+                         compression_force_n=578.2686, door_close_angle_deg=10.0)
+
     )

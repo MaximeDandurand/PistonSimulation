@@ -12,7 +12,7 @@ class EvaluationEngine:
 
     def __init__(self,
                  target_close_force_n: float = 20.0,
-                 target_open_force_n: float = 10.0):
+                 target_open_force_n: float = 20.0):
         """
         :param target_close_force_n: Desired force to pull the door shut (at 0°).
         :param target_open_force_n: Desired force to lift the door (at mid-range).
@@ -35,10 +35,8 @@ class EvaluationEngine:
         return net_torque / door_length
 
     def calculate_metrics(self, result: SimulationResult, cfg: SimulationConfig) -> Dict[str, float]:
-        actual_close_force = abs(self._get_user_force_at_handle(result.net_torques[0], cfg.door_length))
-        positive_torques = [t for t in result.net_torques if t > 0]
-        avg_positive_torque = np.mean(positive_torques) if positive_torques else 0.0
-        actual_open_force = self._get_user_force_at_handle(avg_positive_torque, cfg.door_length)
+        actual_close_force = abs(self._get_user_force_at_handle(result.net_torques[-1], cfg.door_length))
+        actual_open_force =  abs(self._get_user_force_at_handle(result.net_torques[0], cfg.door_length))
 
         # Updated to match SimulationResult.hinge_forces
         max_hinge_force = max(result.hinge_forces) if result.hinge_forces else 0.0
@@ -74,7 +72,6 @@ class EvaluationEngine:
             metrics = self.calculate_metrics(sol['result'], base_cfg)
             sol['score'] = self.score_solution(metrics)
             sol['metrics'] = metrics
-
             # Diagnostic Info
             sol['summary'] = (f"Close Force: {metrics['actual_close_force']:.1f}N "
                               f"(Target: {self.target_close_force}N), "
