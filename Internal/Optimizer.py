@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 from typing import List, Dict, Any
-from matplotlib.path import Path
 from Internal.SimulationEngine import HatchbackPhysicsEngine, SimulationResult
 from Internal.Config import SimulationConfig, SimulationConstraint, MountingArea, PistonSpec
 
