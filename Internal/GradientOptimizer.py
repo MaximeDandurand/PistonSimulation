@@ -2,7 +2,7 @@ import numpy as np
 from typing import List, Dict, Any, Tuple
 from matplotlib.path import Path
 from Internal.SimulationEngine import HatchbackPhysicsEngine, SimulationResult
-from Internal.Config import SimulationConfig, MountingArea, PistonSpec
+from Internal.Config import SimulationConfig, MountingArea, PistonSpec, SimulationConstraint
 from Internal.EvaluationEngine import EvaluationEngine
 
 
@@ -18,7 +18,7 @@ class DiscreteGradientOptimizer:
             "max_physical_angle": 15.,
             "invalid_count": 5.
         }
-    def get_score(self, params: np.ndarray, piston: Any) -> float:
+    def get_score(self, params: np.ndarray, piston: Any, simulation_constraint: SimulationConstraint) -> float:
         cx, cy, dx, dy = params
         self.base_cfg.chassis_piston_anchor_meter = np.array([cx, cy])
         self.base_cfg.piston_mount_on_door_meter = np.array([dx, dy])
@@ -53,11 +53,11 @@ class DiscreteGradientOptimizer:
             is_invalid = True
 
         # 5. Angle Range Penalty: Door must open between 50 and 140 degrees
-        if result.max_physical_angle < 50.0:
-            penalty -= (50.0 - result.max_physical_angle) * self.weights["max_physical_angle"]
+        if result.max_physical_angle < simulation_constraint.open_min_angle_deg:
+            penalty -= (simulation_constraint.open_min_angle_deg - result.max_physical_angle) * self.weights["max_physical_angle"]
             is_invalid = True
-        elif result.max_physical_angle > 140.0:
-            penalty -= (result.max_physical_angle - 140.0) * self.weights["max_physical_angle"]
+        elif result.max_physical_angle > simulation_constraint.open_max_angle_deg:
+            penalty -= (result.max_physical_angle - simulation_constraint.open_max_angle_deg) * self.weights["max_physical_angle"]
             is_invalid = True
 
         # If any of the above failed, return only the penalty (negative score)
@@ -76,11 +76,12 @@ class DiscreteGradientOptimizer:
             door_poly: MountingArea,
             start_pos: np.ndarray,
             resolution: float = 0.005,
-            max_steps: int = 100
+            max_steps: int = 100,
+            simulation_constraint: SimulationConstraint = SimulationConstraint(),
     ) -> Dict[str, Any]:
-        current_params = np.round(start_pos / resolution) * resolution
-        current_score = self.get_score(current_params, piston)
 
+        current_params = np.round(start_pos / resolution) * resolution
+        current_score = self.get_score(current_params, piston, simulation_constraint)
         # Track the path for visualization
         history = [current_params.copy()]
 
@@ -97,7 +98,7 @@ class DiscreteGradientOptimizer:
                             not door_poly.path.contains_point(neighbor[2:4]):
                         continue
 
-                    score = self.get_score(neighbor, piston)
+                    score = self.get_score(neighbor, piston, simulation_constraint)
                     if score > best_neighbor_score:
                         best_neighbor_score = score
                         best_neighbor = neighbor

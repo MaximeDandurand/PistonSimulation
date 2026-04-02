@@ -12,15 +12,17 @@ class SimulationConfig:
     def __init__(self,
                  chassis_piston_anchor=np.array([0.05, -0.4]),
                  piston_mount_on_door=np.array([0.2, -0.035]),
-                 center_of_mass_on_door=np.array([0.5, 0]),
-                 door_length=1,
-                 door_mass_kg=25.0,
+                 center_of_mass_on_door=np.array([0.77, 0.25]),
+                 door_length=1.4260107632981374,
+                 door_mass_kg=14.886813957918724,
                  strut_max_length=0.6,
                  strut_stroke=0.25,
                  extension_force_n=400.0,   # Force at Max Length
                  compression_force_n=500.0,  # Force at Min Length
-                 door_close_angle_deg=10.0,# Starting position when closed
+                 door_close_angle_deg=8.318045652861889,# Starting position when closed
                  number_piston=2,
+                 ground_height_offset=0.406,
+                 middle_door_curve_offset=0.3666492136331058
                  ):
         self.chassis_piston_anchor_meter = chassis_piston_anchor #0,0 is the hinge,
         self.piston_mount_on_door_meter = piston_mount_on_door #Relative to the door orientation. 0,0 is still the hinge.
@@ -34,10 +36,12 @@ class SimulationConfig:
         self.gravity_constant = 9.81
         self.door_close_angle_deg = door_close_angle_deg
         self.number_piston = number_piston
+        self.ground_height_offset = ground_height_offset
+        self.middle_door_curve_offset = middle_door_curve_offset
 
 class SimulationConstraint:
     def __init__(self,
-                 open_max_angle_deg=130.0,
+                 open_max_angle_deg=145.0,
                  open_min_angle_deg=70.0,
 
                  max_opening_torque=100.0,
@@ -95,6 +99,13 @@ class MountingArea:
                     valid_points.append(point)
         return valid_points
 
+    def __str__(self) -> str:
+        """
+        Returns a string representation equivalent to the C# ToString override.
+        """
+        coords = ", ".join([f"({v[0]:.2f}, {v[1]:.2f})" for v in self.vertices])
+        return (f"MountingArea | Vertices: [{coords}] | "
+                f"Bounds: [X: {self.x_min:.2f} to {self.x_max:.2f}, Y: {self.y_min:.2f} to {self.y_max:.2f}]")
 class PistonSpec:
     def __init__(self, name: str, max_length: float, stroke: float, f_ext: float, f_comp: float):
         self.name = name

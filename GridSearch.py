@@ -1,29 +1,43 @@
 import math
+from dataclasses import dataclass, field
+from typing import List, Tuple
 
 import numpy as np
 from Internal.Config import SimulationConfig, SimulationConstraint
 from Internal.Optimizer import PistonSpec, MountingArea, run_grid_search
 from Internal.EvaluationEngine import EvaluationEngine
 from Internal.ExcelCalculator import get_top_n_pistons
+@dataclass
+class OptimizationConfig:
+    """Encapsulates all parameters for the hybrid optimization process."""
+    grid_resolution: float = 0.04
+    top_n_grid: int = 5
+    piston_catalog_size: int = 10
+    max_gradient_steps: int = 100
+    # Mounting zones defined as lists of (x, y) tuples
+    chassis_zone_coords: List[Tuple[float, float]] = field(default_factory=lambda: [
+        (-0.05, -0.05), (-0.05, -0.6), (0.05, -0.6), (0.05, -0.05)
+    ])
+    door_zone_coords: List[Tuple[float, float]] = field(default_factory=lambda: [
+        (0.0, 0.1), (0.5, 0.1), (0.5, -0.1), (0.0, -0.1)
+    ])
+    max_iteration = 3
 
-def run_grid_simulation_workflow() -> None:
+def run_grid_simulation_workflow(opt_cfg: OptimizationConfig) -> None:
+
     base_cfg = SimulationConfig()
 
-    # Your base coordinates
-    base_coords = [(-0.05, -0.05), (-0.05, -0.6), (0.05, -0.6), (0.05, -0.05)]
-
-    # Example: 10 degrees clockwise from the negative y-axis
+    # --- 1. Geometry Setup ---
+    # Rotate chassis coordinates based on the door's closed angle
     angle_rad = math.radians(base_cfg.door_close_angle_deg)
-
-    rotated_coords = []
-
-    for x, y in base_coords:
+    rotated_chassis = []
+    for x, y in opt_cfg.chassis_zone_coords:
         new_x = x * math.cos(angle_rad) - y * math.sin(angle_rad)
         new_y = x * math.sin(angle_rad) + y * math.cos(angle_rad)
-        rotated_coords.append((new_x, new_y))
+        rotated_chassis.append((new_x, new_y))
 
-    chassis_zone = MountingArea(rotated_coords)
-    door_zone = MountingArea([(0., 0.1), (0.5, 0.1), (0.5, -0.1), (0., -0.1)])
+    chassis_zone = MountingArea(rotated_chassis)
+    door_zone = MountingArea(opt_cfg.door_zone_coords)
 
     # piston_catalog = [
     #     PistonSpec("HeavyDuty-500N", max_length=0.6680, stroke=0.2791, f_ext=355, f_comp=462)
@@ -40,7 +54,7 @@ def run_grid_simulation_workflow() -> None:
         door_poly=door_zone,
         pistons=piston_catalog,
         resolution=0.01,
-        simulation_constraints=SimulationConstraint(),
+        simulation_constraints= SimulationConstraint(),
         show_metrics=True,
     )
 
@@ -87,4 +101,4 @@ def run_grid_simulation_workflow() -> None:
 
 
 if __name__ == "__main__":
-     run_grid_simulation_workflow()
+     run_grid_simulation_workflow(OptimizationConfig())

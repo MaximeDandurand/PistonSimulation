@@ -7,7 +7,7 @@ from Internal.piston import ALL_MCMASTER_PISTONS
 IDEAL_PISTON_LENGTH_RATIO = 0.6
 ESTIMATED_STROKE_RATIO = 0.4
 DISTANCE_HINGE_METER_RATIO = 0.85
-SAFETY_FACTOR = 1
+SAFETY_FACTOR = 1.1
 NEWTON_TO_POUNDS = 0.2248
 def get_optimal_start(cfg: SimulationConfig, opened_angle: float, closed_angle: float, area: MountingArea):
     # Base geometry calculations

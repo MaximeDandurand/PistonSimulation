@@ -212,4 +212,4 @@ def visualize_optimization(num_seeds=100):
 
 
 if __name__ == "__main__":
-    visualize_optimization(num_seeds=20)
+    visualize_optimization(num_seeds=100)

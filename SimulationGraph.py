@@ -155,10 +155,11 @@ def run_interactive_simulation(cfg):
 
 if __name__ == "__main__":
     run_interactive_simulation(
-        SimulationConfig(chassis_piston_anchor=np.array([0.080667, -0.530000]),
-                         piston_mount_on_door=np.array([0.130000, -0.040000]),
-                         center_of_mass_on_door=np.array([0.500000, 0.000000]), door_length=1, door_mass_kg=25.0,
-                         strut_max_length=0.66802, strut_stroke=0.278892, extension_force_n=444.822,
-                         compression_force_n=578.2686, door_close_angle_deg=10.0)
+        SimulationConfig(chassis_piston_anchor=np.array([0.442333, -0.423000]),
+                         piston_mount_on_door=np.array([0.158667, 0.069333]),
+                         center_of_mass_on_door=np.array([0.770000, 0.250000]), door_length=1.4260107632981374,
+                         door_mass_kg=14.886813957918724, strut_max_length=0.785114, strut_stroke=0.350012,
+                         extension_force_n=311.3754, compression_force_n=404.78802,
+                         door_close_angle_deg=8.318045652861889)
 
     )

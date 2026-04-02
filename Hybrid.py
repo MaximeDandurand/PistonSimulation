@@ -18,29 +18,36 @@ class OptimizationConfig:
     max_gradient_steps: int = 100
     # Mounting zones defined as lists of (x, y) tuples
     chassis_zone_coords: List[Tuple[float, float]] = field(default_factory=lambda: [
-        (-0.05, -0.05), (-0.05, -0.6), (0.05, -0.6), (0.05, -0.05)
+        (0.5109729125976563, -1.0940095209813385),
+        (-0.12770208740234376, -1.0940095209813385),
+        (0.03530183681109429, -0.08038170002264337),
+        (0.19289287463076574, -0.136317052224804),
+        (0.32657148998097174, -0.22276893314767585),
+        (0.42751932675598014, -0.3329369159373982),
+        (0.48992729274340413, -0.45872352571806),
+        (0.5109729125976562, -0.5920095209813384)
     ])
     door_zone_coords: List[Tuple[float, float]] = field(default_factory=lambda: [
-        (0.0, 0.1), (0.5, 0.1), (0.5, -0.1), (0.0, -0.1)
+        (0.40878223478677705, -0.20650860812068528),
+        (0.01470208740234375, -0.20650860812068528),
+        (0.01470208740234375, -0.0107567505372308),
+        (0.15068555513542542, -0.05248641835595799),
+        (0.2911477514508052, -0.1222805342890506),
+        (0.40878223478677705, -0.21650860812068526)
     ])
+    max_iteration = 3
 
-def run_hybrid_optimization(opt_cfg: OptimizationConfig):
+def run_hybrid_optimization(opt_cfg: OptimizationConfig, iteration=1):
     base_cfg = SimulationConfig()
     evaluator = EvaluationEngine(target_close_force_n=20.0, target_open_force_n=20.0)
     optimizer = DiscreteGradientOptimizer(base_cfg, evaluator)
 
     # --- 1. Geometry Setup ---
     # Rotate chassis coordinates based on the door's closed angle
-    angle_rad = math.radians(base_cfg.door_close_angle_deg)
-    rotated_chassis = []
-    for x, y in opt_cfg.chassis_zone_coords:
-        new_x = x * math.cos(angle_rad) - y * math.sin(angle_rad)
-        new_y = x * math.sin(angle_rad) + y * math.cos(angle_rad)
-        rotated_chassis.append((new_x, new_y))
 
-    chassis_zone = MountingArea(rotated_chassis)
-    door_zone = MountingArea(opt_cfg.door_zone_coords)
-
+    chassis_zone = MountingArea(opt_cfg.chassis_zone_coords)
+    door_zone = MountingArea(transform_door_zone(opt_cfg.door_zone_coords, base_cfg.door_close_angle_deg))
+    print(door_zone)
     # --- 2. Phase 1: Grid Search ---
     print(f"PHASE 1: Running Wide Grid Search (Resolution: {opt_cfg.grid_resolution})...")
     piston_catalog = get_top_n_pistons(base_cfg, opt_cfg.piston_catalog_size)
@@ -52,11 +59,17 @@ def run_hybrid_optimization(opt_cfg: OptimizationConfig):
         pistons=piston_catalog,
         resolution=opt_cfg.grid_resolution,
         simulation_constraints=SimulationConstraint(),
-        show_metrics=True,
+        show_metrics=True
     )
 
     if not all_valid_grid_solutions:
+        if iteration>opt_cfg.max_iteration:
+            print(f"No valid configurations found in Phase 1 after {iteration} iterations.")
+            return
         print("No valid configurations found in Phase 1.")
+        print("Running a more precise grid search...")
+        opt_cfg.grid_resolution = opt_cfg.grid_resolution / 1.5
+        run_hybrid_optimization(opt_cfg, iteration+1)
         return
 
     # Rank grid results to find the best starting points
@@ -103,7 +116,6 @@ def run_hybrid_optimization(opt_cfg: OptimizationConfig):
 
     elapsed = time.time() - start_time
     print(f"\nRefinement completed in {elapsed:.2f} seconds.")
-
     # --- 4. Final Output ---
     if best_final_result:
         params = best_final_result['params']
@@ -119,7 +131,6 @@ def run_hybrid_optimization(opt_cfg: OptimizationConfig):
 
         best_res = optimizer.engine.run(base_cfg)
         metrics = evaluator.calculate_metrics(best_res, base_cfg)
-
         print("-" * 40)
         print("--- HYBRID OPTIMIZATION BEST RESULT ---")
         print(f"Piston:         {p.name}")
@@ -146,12 +157,32 @@ def run_hybrid_optimization(opt_cfg: OptimizationConfig):
             f"door_close_angle_deg={base_cfg.door_close_angle_deg})"
         )
         print("-" * 40)
+def transform_to_door_coordinate(point: Tuple[float, float], angle_deg: float) -> Tuple[float, float]:
+    """
+    Transforms a point from global coordinates to a local system where 0 degrees
+    aligns the local x-axis with the global negative y-axis.
+    """
+    radians = math.radians(angle_deg)
+    cos_val = math.cos(radians)
+    sin_val = math.sin(radians)
 
+    # Global point coordinates
+    gx, gy = point
+
+
+    local_x = gx * sin_val - gy * cos_val
+    local_y = gx * cos_val + gy * sin_val
+
+    return (local_x, local_y)
+
+# Example of transforming your entire list:
+def transform_door_zone(coords: List[Tuple[float, float]], angle_deg: float) -> List[Tuple[float, float]]:
+    return [transform_to_door_coordinate(p, angle_deg) for p in coords]
 if __name__ == "__main__":
     # Example of how to use the new config class
     custom_config = OptimizationConfig(
         grid_resolution=0.03,
-        top_n_grid=10,
-        piston_catalog_size=15
+        top_n_grid=5,
+        piston_catalog_size=50
     )
     run_hybrid_optimization(custom_config)
