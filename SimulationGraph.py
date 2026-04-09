@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import lines
 from matplotlib.widgets import Slider
 from Internal.Config import SimulationConfig
 from Internal.SimulationEngine import HatchbackPhysicsEngine
@@ -79,6 +80,14 @@ def run_interactive_simulation(cfg):
     ax_fcomp = plt.axes([c4, 0.13, sw, sh]);
     s_fcomp = Slider(ax_fcomp, 'f_comp (P2)', 0, 4000, valinit=cfg.f_comp)
 
+    # Example to add a line between ax1 and ax2
+    line = lines.Line2D([0.35, 0.35], [0.3, 0.95], transform=fig.transFigure, color='gray', lw=2)
+    fig.add_artist(line)
+
+    # Example to add a line between ax2 and ax3
+    line2 = lines.Line2D([0.66, 0.66], [0.3, 0.95], transform=fig.transFigure, color='gray', lw=2)
+    fig.add_artist(line2)
+
     def update(val):
         cfg.chassis_piston_anchor_meter = np.array([s_cx.val, s_cy.val])
         cfg.piston_mount_on_door_meter = np.array([s_mx.val, s_my.val])
@@ -137,6 +146,18 @@ def run_interactive_simulation(cfg):
 
         # Secondary Axis for Hinge Forces
         ax2b.plot(res.angles_deg, res.hinge_forces, 'p--', alpha=0.3)
+
+        # 5. Labels, Title, and Legend
+        ax2.set_title('Force Analysis vs. Angle')
+        ax2.set_xlabel(r'Angle ($^{\circ}$)')
+        ax2.set_ylabel('Net Force ($N$)', color='black')
+        ax2b.set_ylabel('Hinge Force ($N$)', color='blue')
+        ax2b.yaxis.set_label_position("right")
+        # Optional: Add legend for both axes
+        lines, labels = ax2.get_legend_handles_labels()
+        lines2, labels2 = ax2b.get_legend_handles_labels()
+        ax2.legend(lines + lines2, labels + labels2, loc='upper right')
+
 
         # Clean up y-limits so the 'invalid' fill doesn't zoom out the graph to 1e6
         if len(res.net_torques) > 0:
